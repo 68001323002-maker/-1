@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sunshine Study - Smart Light</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background-color: #121212;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .app-container {
+      width: 100%;
+      max-width: 390px;
+      background-color: #1e1e1e;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f5f5f5;
+    }
+    .header p {
+      font-size: 13px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    /* ส่วนแสดงรูปจำลองห้อง (Sunshine Study) */
+    .room-preview {
+      position: relative;
+      width: 100%;
+      height: 250px;
+      background: linear-gradient(180deg, #2b2b2b 0%, #1a1a1a 100%);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      border: 1px solid #333;
+      transition: all 0.5s ease;
+    }
+    /* แสงไฟสาดส่องในห้องเมื่อเปิด */
+    .light-glow {
+      position: absolute;
+      top: 35px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 280px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(255, 220, 115, 0.55) 0%, rgba(255, 190, 50, 0.15) 55%, rgba(0,0,0,0) 75%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    .room-preview.is-on .light-glow {
+      opacity: 1;
+    }
+    .room-preview.is-on {
+      border-color: #ffd54f;
+      box-shadow: 0 0 25px rgba(255, 213, 79, 0.15);
+    }
+
+    /* วาดห้องจำลองด้วย SVG */
+    svg.room-svg {
+      width: 100%;
+      height: 100%;
+    }
+    .lamp-bulb {
+      fill: #555;
+      transition: fill 0.4s ease, filter 0.4s ease;
+    }
+    .room-preview.is-on .lamp-bulb {
+      fill: #fff3b0;
+      filter: drop-shadow(0 0 12px #ffd54f);
+    }
+    .room-wall {
+      fill: #323232;
+      transition: fill 0.4s ease;
+    }
+    .room-preview.is-on .room-wall {
+      fill: #4a4538;
+    }
+    .room-floor {
+      fill: #241e1a;
+      transition: fill 0.4s ease;
+    }
+    .room-preview.is-on .room-floor {
+      fill: #4a3a28;
+    }
+
+    /* แผงควบคุมสวิตช์ */
+    .control-box {
+      background-color: #262626;
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .light-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .icon-circle {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background-color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 22px;
+      transition: 0.3s;
+    }
+    .icon-circle.active {
+      background-color: rgba(255, 213, 79, 0.2);
+      box-shadow: 0 0 15px rgba(255, 213, 79, 0.3);
+    }
+    .light-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .light-status {
+      font-size: 13px;
+      color: #888;
+      margin-top: 3px;
+    }
+    .light-status.on {
+      color: #ffd54f;
+      font-weight: 500;
+    }
+
+    /* ปุ่มสวิตช์เปิด-ปิด */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #444;
+      transition: .3s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px; width: 26px;
+      left: 4px; bottom: 4px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #ffd54f;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    /* แถบปรับความสว่าง */
+    .dimmer-box {
+      background-color: #262626;
+      border-radius: 20px;
+      padding: 18px 20px;
+      opacity: 0.4;
+      pointer-events: none;
+      transition: 0.3s;
+    }
+    .dimmer-box.enabled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .dimmer-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #ccc;
+      margin-bottom: 10px;
+    }
+    input[type=range] {
+      width: 100%;
+      accent-color: #ffd54f;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>Sunshine Study</h1>
+      <p>ระบบควบคุมแสงสว่างห้องจำลอง</p>
+    </div>
+
+    <!-- รูปภาพห้องจำลองแบบโต้ตอบ -->
+    <div class="room-preview" id="roomPreview">
+      <div class="light-glow" id="lightGlow"></div>
+      <svg class="room-svg" viewBox="0 0 340 240">
+        <!-- ผนังและพื้นห้อง -->
+        <polygon points="30,20 310,20 310,185 30,185" class="room-wall" />
+        <polygon points="10,220 30,185 310,185 330,220" class="room-floor" />
+        
+        <!-- หน้าต่างฝั่งซ้าย -->
+        <rect x="45" y="40" width="55" height="105" fill="#1e242b" stroke="#666" stroke-width="3"/>
+        <line x1="72" y1="40" x2="72" y2="145" stroke="#666" stroke-width="2"/>
+        <line x1="45" y1="92" x2="100" y2="92" stroke="#666" stroke-width="2"/>
+
+        <!-- ชั้นหนังสือ -->
+        <rect x="110" y="55" width="42" height="130" fill="#5c4938" rx="2"/>
+        <line x1="110" y1="85" x2="152" y2="85" stroke="#3e3024" stroke-width="3"/>
+        <line x1="110" y1="115" x2="152" y2="115" stroke="#3e3024" stroke-width="3"/>
+        <line x1="110" y1="145" x2="152" y2="145" stroke="#3e3024" stroke-width="3"/>
+
+        <!-- กรอบรูปติดผนังขวา -->
+        <rect x="215" y="65" width="32" height="42" fill="#e0dcd3" stroke="#5c4938" stroke-width="2"/>
+        <rect x="260" y="60" width="32" height="46" fill="#e0dcd3" stroke="#5c4938" stroke-width="2"/>
+
+        <!-- โคมไฟติดผนัง (จุดไฮไลท์) -->
+        <path d="M175,45 Q182,45 182,55" stroke="#888" stroke-width="3" fill="none"/>
+        <path d="M172,55 L192,55 L196,72 L168,72 Z" class="lamp-bulb"/>
+
+        <!-- โซฟาฝั่งซ้าย -->
+        <rect x="40" y="150" width="65" height="35" fill="#6b7075" rx="4"/>
+        <rect x="45" y="138" width="22" height="15" fill="#9ea3a8" rx="3"/>
+
+        <!-- โต๊ะทำงานและคอมพิวเตอร์ -->
+        <rect x="195" y="145" width="95" height="8" fill="#8c6d53" rx="2"/>
+        <rect x="205" y="153" width="6" height="35" fill="#5c4938"/>
+        <rect x="275" y="153" width="6" height="35" fill="#5c4938"/>
+        <!-- หน้าจอคอม -->
+        <rect x="235" y="112" width="34" height="24" fill="#222" stroke="#ccc" stroke-width="2" rx="2"/>
+        <rect x="249" y="136" width="6" height="9" fill="#ccc"/>
+
+        <!-- เก้าอี้สีเหลือง -->
+        <rect x="155" y="142" width="30" height="22" fill="#c9b037" rx="6"/>
+        <rect x="155" y="160" width="32" height="10" fill="#b39b29" rx="4"/>
+        <line x1="160" y1="170" x2="157" y2="190" stroke="#5c4938" stroke-width="3"/>
+        <line x1="182" y1="170" x2="185" y2="190" stroke="#5c4938" stroke-width="3"/>
+      </svg>
+    </div>
+
+    <!-- สวิตช์เปิด-ปิดไฟ 1 ดวง -->
+    <div class="control-box">
+      <div class="light-info">
+        <div class="icon-circle" id="iconCircle">💡</div>
+        <div>
+          <div class="light-title">ไฟโคมผนังห้องอ่านหนังสือ</div>
+          <div class="light-status" id="statusText">สถานะ: ปิดอยู่</div>
+        </div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="mainSwitch" onchange="toggleRoomLight()">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- แถบปรับความสว่าง -->
+    <div class="dimmer-box" id="dimmerBox">
+      <div class="dimmer-header">
+        <span>ระดับความสว่าง</span>
+        <span id="brightnessLabel">100%</span>
+      </div>
+      <input type="range" id="brightnessSlider" min="20" max="100" value="100" oninput="adjustBrightness(this.value)">
+    </div>
+  </div>
+
+  <script>
+    function toggleRoomLight() {
+      const isOn = document.getElementById('mainSwitch').checked;
+      const roomPreview = document.getElementById('roomPreview');
+      const iconCircle = document.getElementById('iconCircle');
+      const statusText = document.getElementById('statusText');
+      const dimmerBox = document.getElementById('dimmerBox');
+      const lightGlow = document.getElementById('lightGlow');
+      const sliderVal = document.getElementById('brightnessSlider').value;
+
+      if (isOn) {
+        roomPreview.classList.add('is-on');
+        iconCircle.classList.add('active');
+        statusText.innerText = 'สถานะ: เปิดใช้งาน';
+        statusText.classList.add('on');
+        dimmerBox.classList.add('enabled');
+        lightGlow.style.opacity = sliderVal / 100;
+      } else {
+        roomPreview.classList.remove('is-on');
+        iconCircle.classList.remove('active');
+        statusText.innerText = 'สถานะ: ปิดอยู่';
+        statusText.classList.remove('on');
+        dimmerBox.classList.remove('enabled');
+        lightGlow.style.opacity = 0;
+      }
+    }
+
+    function adjustBrightness(val) {
+      document.getElementById('brightnessLabel').innerText = val + '%';
+      const isOn = document.getElementById('mainSwitch').checked;
+      if (isOn) {
+        document.getElementById('lightGlow').style.opacity = val / 100;
+      }
+    }
+  </script>
+
+</body>
+</html>
